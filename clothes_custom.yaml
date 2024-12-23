@@ -1,4 +1,4 @@
-# 멀티 클래스 세그멘테이션 설정 파일
+# 멀티 클래스 디텍션 설정 파일
 
 # 학습 및 검증 데이터 경로
 train: dataset/clothes/images/train  # 학습 이미지 경로

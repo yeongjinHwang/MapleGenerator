@@ -1,4 +1,5 @@
 # 헤어 세그멘테이션 설정 파일
+
 train: dataset/hair/images/train  # 학습 이미지 경로
 val: dataset/hair/images/val      # 검증 이미지 경로
 
