@@ -1,0 +1,14 @@
+# 멀티 클래스 세그멘테이션 설정 파일
+
+# 학습 및 검증 데이터 경로
+train: dataset/clothes/images/train  # 학습 이미지 경로
+val: dataset/clothes/images/val      # 검증 이미지 경로
+
+# 클래스 개수 및 클래스 이름
+nc: 5
+names:
+  - bottom
+  - dress
+  - outerwear
+  - shoe
+  - top
