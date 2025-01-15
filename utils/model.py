@@ -37,7 +37,7 @@ def hair_loader():
     Returns:
         hair_model: YOLO 모델 객체.
     """
-    hair_model = YOLO("runs/segment/train/weights/best.pt")
+    hair_model = YOLO("runs/hair_segment/train/weights/best.pt")
     return hair_model
 
 def hair_infer(model, image_path):
