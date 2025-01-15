@@ -1,6 +1,24 @@
 import requests
 import json
-from utils.loader import fetch_icon
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def fetch_icon(item_id, region, version):
+    """
+    maplestory.io API를 통해 아이템 ID에 해당하는 아이콘이 있는지 확인.
+
+    Args:
+        item_id (int): 아이템 ID.
+        region (str): 지역 코드.
+        version (str): 버전 정보.
+
+    Returns:
+        tuple: (item_id, 성공 여부).
+    """
+    url = f"https://maplestory.io/api/{region}/{version}/item/{item_id}/icon"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return item_id, True
+    return item_id, False
 
 def fetch_item_ids_by_category(region, version, subcategories):
     """
@@ -26,14 +44,26 @@ def fetch_item_ids_by_category(region, version, subcategories):
                 filename = './ids_json/' + filename
                 valid_ids = []  # 아이콘을 성공적으로 불러온 ID만 저장
 
-                for item in items:
-                    if item.get('typeInfo', {}).get('subCategory') == subcategory:
-                        item_id = item['id']
-                        icon = fetch_icon(item_id, region, version)  # 아이콘 불러오기
-                        if icon is not None:  # 아이콘이 성공적으로 불러와진 경우
+                # 서브카테고리에 해당하는 아이템 필터링
+                item_ids = [
+                    item['id'] for item in items
+                    if item.get('typeInfo', {}).get('subCategory') == subcategory
+                ]
+
+                print(f"[INFO] '{subcategory}'에서 총 {len(item_ids)}개의 아이템을 찾았습니다.")
+
+                # 병렬로 API 호출
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    future_to_id = {executor.submit(fetch_icon, item_id, region, version): item_id for item_id in item_ids}
+
+                    processed_count = 0
+                    for future in as_completed(future_to_id):
+                        item_id, success = future.result()
+                        processed_count += 1  # 처리된 아이템 개수 증가
+                        if success:
                             valid_ids.append(item_id)
 
-                print(f"총 {len(valid_ids)}개의 '{subcategory}' 아이템을 발견했습니다.")
+                print(f"총 {len(valid_ids)}개의 '{subcategory}' 아이템을 성공적으로 처리했습니다.")
 
                 # JSON 파일로 저장
                 with open(filename, "w", encoding="utf-8") as f:
@@ -51,11 +81,11 @@ version = "389"  # 버전 정보
 
 # 저장할 서브카테고리와 파일명 매핑
 subcategories = {
+    "Shoes": "Shoes_item_ids.json",
     "Hair": "hair_item_ids.json",
     "Top": "top_item_ids.json",
     "Overall": "overall_item_ids.json",
-    "Bottom": "bottom_item_ids.json",
-    "Shoes": "Shoes_item_ids.json"
+    "Bottom": "bottom_item_ids.json"
 }
 
 # 함수 호출
