@@ -47,7 +47,8 @@ subcategories = {
     "Hair": "hair_item_ids.json",
     "Top": "top_item_ids.json",
     "Overall": "overall_item_ids.json",
-    "Bottom": "bottom_item_ids.json"
+    "Bottom": "bottom_item_ids.json",
+    "Shoes": "Shoes_item_ids.json"
 }
 
 # 함수 호출
