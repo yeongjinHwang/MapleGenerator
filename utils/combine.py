@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from collections import defaultdict
 
 def combine_segments(image_path, predictions, class_mapping):
@@ -48,47 +47,3 @@ def combine_segments(image_path, predictions, class_mapping):
         combined_cropped_images[class_name] = cropped_segment
 
     return combined_cropped_images
-
-def visualize_segments(cropped_images,title):
-    """
-    재분류된 자른 세그먼트를 시각화합니다.
-    Args:
-        cropped_images: 재분류된 클래스별로 자른 이미지를 포함하는 딕셔너리.
-    """
-    num_classes = len(cropped_images)
-    if num_classes == 0:
-        print("시각화할 세그먼트가 없습니다.")
-        return
-
-    plt.figure(figsize=(10, 5))
-    for i, (class_name, cropped_image) in enumerate(cropped_images.items()):
-        plt.subplot(1, num_classes, i + 1)
-        plt.imshow(cropped_image)
-        plt.title(class_name)
-        plt.axis("off")
-    plt.suptitle(title, fontsize=16)
-    plt.tight_layout()
-    plt.show()
-
-def process_hair_predictions(seg_results):
-    """
-    예측 결과를 combine_segments와 통합 가능한 포맷으로 변환합니다.
-    Args:
-        seg_results: 세그멘테이션 결과 리스트.
-    Returns:
-        combine_segments와 통합 가능한 포맷의 예측 리스트.
-    """
-    processed_predictions = []
-    for result in seg_results:
-        if "mask" in result:
-            # 마스크에서 컨투어 추출
-            contours, _ = cv2.findContours((result["mask"] > 0.5).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            for contour in contours:
-                if len(contour) > 2:  # 컨투어가 유효한 경우
-                    # 포맷 변환: [(x, y), ...] -> [{"x": x, "y": y}, ...]
-                    points = [{"x": int(pt[0]), "y": int(pt[1])} for pt in contour[:, 0, :]]
-                    processed_predictions.append({
-                        "class": result["label"],
-                        "points": points
-                    })
-    return processed_predictions
