@@ -116,7 +116,7 @@ if __name__ == "__main__":
     }
 
     # 아이콘 저장 디렉토리 설정
-    output_dir = "./icon"
+    output_dir = "./data/icon"
 
     # 함수 호출
     fetch_item_ids_by_category(region, version, subcategories, output_dir)
