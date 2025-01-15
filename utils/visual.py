@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.loader import fetch_icon
 
 def visualize_segments(cropped_images,title):
     """
@@ -47,14 +46,14 @@ def process_hair_predictions(seg_results):
                     })
     return processed_predictions
 
-def visualize_top_matches(seg_image, top_matches, icon_features, overall_title="Top Matches"):
+def visualize_top_matches(seg_image, top_matches, icon_dir, overall_title="Top Matches"):
     """
     Segmentation 이미지와 상위 5개의 아이템 이미지를 시각화하고 유사도 점수를 표시합니다.
 
     Args:
         seg_image (numpy.ndarray): Segmentation 결과 이미지.
         top_matches (list): [(item_id, 유사도)] 형태의 상위 아이템 리스트.
-        icon_features (dict): {item_id: 이미지 데이터(numpy.ndarray)} 딕셔너리.
+        icon_dir (str): 아이콘 이미지가 저장된 디렉토리.
         overall_title (str): 그래프 전체 제목 (기본값: "Top Matches").
     """
     num_matches = len(top_matches)
@@ -70,15 +69,23 @@ def visualize_top_matches(seg_image, top_matches, icon_features, overall_title="
 
     # 나머지 컬럼: 상위 매칭 결과
     for i, (item_id, similarity) in enumerate(top_matches):
-        icon_image = fetch_icon(item_id)
-        if icon_image is None:
-            print(f"ID {item_id}의 아이콘 이미지를 불러올 수 없습니다.")
-            continue
+        # 아이콘 이미지 경로
+        icon_path = os.path.join(icon_dir, f"{item_id}.png")
 
-        plt.subplot(1, total_columns, i + 2)  # Segmentation 이미지 이후부터 시작
-        plt.imshow(cv2.cvtColor(icon_image, cv2.COLOR_BGR2RGB))  # BGR -> RGB 변환
-        plt.title(f"ID: {item_id}\nScore: {similarity:.2f}", fontsize=10)
-        plt.axis("off")
+        # 아이콘 이미지 로드
+        if os.path.exists(icon_path):
+            icon_image = cv2.imread(icon_path)
+            if icon_image is None:
+                print(f"[WARN] ID {item_id}의 이미지를 불러올 수 없습니다.")
+                continue
+
+            # 시각화
+            plt.subplot(1, total_columns, i + 2)  # Segmentation 이미지 이후부터 시작
+            plt.imshow(cv2.cvtColor(icon_image, cv2.COLOR_BGR2RGB))  # BGR -> RGB 변환
+            plt.title(f"ID: {item_id}\nScore: {similarity:.2f}", fontsize=10)
+            plt.axis("off")
+        else:
+            print(f"[WARN] {icon_path} 파일이 존재하지 않습니다.")
 
     # 전체 제목 추가
     plt.suptitle(overall_title, fontsize=16)
