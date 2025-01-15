@@ -1,12 +1,11 @@
-import torch
+import cv2
 import json
 import heapq
-
+import os
 from utils.combine import combine_segments
 from utils.model import hair_loader, hair_infer, clothes_loader, clothes_infer
 from utils.post_processing import edge_segmentation, combine_segments, process_hair_predictions
 from utils.visual import visualize_segments, visualize_top_matches
-from utils.loader import load_item_ids, fetch_icon
 
 # 클래스 매핑 정의
 CLASS_MAPPING = {
@@ -24,9 +23,6 @@ CLASS_MAPPING = {
 }
 
 def main():
-    # 디바이스 설정
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     # 입력 이미지 경로
     image_path = "./data/bts_jhin.jpg"
 
@@ -57,29 +53,35 @@ def main():
     preprocessed_images = edge_segmentation(reclassified_cropped_images)
     visualize_segments(preprocessed_images, "Preprocessed Result")
 
-    # JSON 파일 로드
-    print("[INFO] JSON 데이터 로드 중...")
-    item_ids = {
-        "hair" : load_item_ids("./ids_json/hair_item_ids.json"),
-        "top_item_ids" : load_item_ids("./ids_json/top_item_ids.json"),
-        "overall_item_ids" : load_item_ids("./ids_json/overall_item_ids.json"),
-        "bottom_item_ids" : load_item_ids("./ids_json/bottom_item_ids.json")
+    item_icons = {
+        "hair" : "./icon/Hair",
+        "top" : "./icon/Overall",
+        "overall" : "./icon/Shoes",
+        "bottom" : "./icon/bottom",
+        "shoes" : "./icon/shoes"
     }
 
     # 아이콘과 비교
     print("[INFO] 비교 중...")
     icon_features = {}
-    for class_name, seg_image in preprocessed_images.items() : 
+    for class_name, seg_image in preprocessed_images.items():
         top_5_heap = []  # 최소 힙으로 상위 5개를 유지
-        for item_ids in item_ids[class_name]:
-            icon_image = fetch_icon(item_ids)
-            if icon_image is not None : 
-                preprocessed_item = edge_segmentation(icon_image)
-                score = 1 #임시, preprocessed_item와 seg_image score 계산
+        icon_directory = item_icons.get(class_name)
 
-                # 힙에 (score, item_id) 추가, 5개를 초과하면 최소값과 비교 후 대체
-                if len(top_5_heap) < 5: heapq.heappush(top_5_heap, (score, item_ids))
-                else: heapq.heappushpop(top_5_heap, (score, item_ids))
+        for file_name in icon_directory:
+            item_id = os.path.splitext(file_name)[0]  # 파일 이름에서 ID 추출
+            file_path = os.path.join(icon_directory, file_name)
+
+            icon_image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+            preprocessed_item = edge_segmentation(icon_image)
+
+            score = 1  # TODO: 실제로 seg_image와 preprocessed_item의 유사도 계산
+
+            # 힙에 (score, item_id) 추가, 5개를 초과하면 최소값과 비교 후 대체
+            if len(top_5_heap) < 5:
+                heapq.heappush(top_5_heap, (score, item_id))
+            else:
+                heapq.heappushpop(top_5_heap, (score, item_id))
 
         icon_features[class_name] = sorted(top_5_heap, key=lambda x: x[0], reverse=True)
 
