@@ -1,9 +1,11 @@
 import requests
 import json
+from utils.loader import fetch_icon
 
 def fetch_item_ids_by_category(region, version, subcategories):
     """
     전체 아이템 데이터에서 특정 서브카테고리의 아이템을 필터링하고, 각 서브카테고리의 아이템 ID를 JSON으로 저장하는 함수.
+    아이콘을 성공적으로 불러올 수 있는 경우에만 저장합니다.
 
     Args:
         region (str): 지역 코드 (예: "KMS").
@@ -21,16 +23,21 @@ def fetch_item_ids_by_category(region, version, subcategories):
 
             # 각 서브카테고리별로 ID 추출 및 저장
             for subcategory, filename in subcategories.items():
-                filename = './ids_json/'+filename
-                filtered_ids = [
-                    item['id'] for item in items 
-                    if item.get('typeInfo', {}).get('subCategory') == subcategory
-                ]
-                print(f"총 {len(filtered_ids)}개의 '{subcategory}' 아이템을 발견했습니다.")
+                filename = './ids_json/' + filename
+                valid_ids = []  # 아이콘을 성공적으로 불러온 ID만 저장
+
+                for item in items:
+                    if item.get('typeInfo', {}).get('subCategory') == subcategory:
+                        item_id = item['id']
+                        icon = fetch_icon(item_id, region, version)  # 아이콘 불러오기
+                        if icon is not None:  # 아이콘이 성공적으로 불러와진 경우
+                            valid_ids.append(item_id)
+
+                print(f"총 {len(valid_ids)}개의 '{subcategory}' 아이템을 발견했습니다.")
 
                 # JSON 파일로 저장
                 with open(filename, "w", encoding="utf-8") as f:
-                    json.dump(filtered_ids, f, ensure_ascii=False, indent=4)
+                    json.dump(valid_ids, f, ensure_ascii=False, indent=4)
 
                 print(f"'{subcategory}' 아이템 ID가 '{filename}'에 저장되었습니다.")
         else:
