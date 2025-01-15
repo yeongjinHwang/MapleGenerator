@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
-
 def combine_segments(image_path, predictions, class_mapping):
     """
     동일한 클래스로 재분류된 세그먼트를 결합하고 이미지를 자릅니다.
@@ -50,9 +49,7 @@ def combine_segments(image_path, predictions, class_mapping):
 
     return combined_cropped_images
 
-
-
-def visualize_segments(cropped_images):
+def visualize_segments(cropped_images,title):
     """
     재분류된 자른 세그먼트를 시각화합니다.
     Args:
@@ -69,19 +66,20 @@ def visualize_segments(cropped_images):
         plt.imshow(cropped_image)
         plt.title(class_name)
         plt.axis("off")
+    plt.suptitle(title, fontsize=16)
     plt.tight_layout()
     plt.show()
 
-def process_hair_predictions(hair_results):
+def process_hair_predictions(seg_results):
     """
-    헤어 예측 결과를 combine_segments와 통합 가능한 포맷으로 변환합니다.
+    예측 결과를 combine_segments와 통합 가능한 포맷으로 변환합니다.
     Args:
-        hair_results: 헤어 세그멘테이션 결과 리스트.
+        seg_results: 세그멘테이션 결과 리스트.
     Returns:
         combine_segments와 통합 가능한 포맷의 예측 리스트.
     """
     processed_predictions = []
-    for result in hair_results:
+    for result in seg_results:
         if "mask" in result:
             # 마스크에서 컨투어 추출
             contours, _ = cv2.findContours((result["mask"] > 0.5).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -90,7 +88,7 @@ def process_hair_predictions(hair_results):
                     # 포맷 변환: [(x, y), ...] -> [{"x": x, "y": y}, ...]
                     points = [{"x": int(pt[0]), "y": int(pt[1])} for pt in contour[:, 0, :]]
                     processed_predictions.append({
-                        "class": "hair",
+                        "class": result["label"],
                         "points": points
                     })
     return processed_predictions

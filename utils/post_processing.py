@@ -49,22 +49,3 @@ def preprocess_segmentation(cropped_images):
         preprocessed_images[class_name] = edges
     return preprocessed_images
 
-def preprocess_segmentation(cropped_images):
-    """
-    Segmentation 결과 이미지를 필터링 및 Edge Detection 적용.
-
-    Args:
-        cropped_images (dict): 재분류된 클래스별로 자른 이미지를 포함하는 딕셔너리.
-
-    Returns:
-        dict: 전처리된 이미지 딕셔너리.
-    """
-    preprocessed_images = {}
-    for class_name, cropped_image in cropped_images.items():
-        # Gaussian Blur 적용
-        filtered_image = apply_filter(cropped_image)
-        # Edge Detection 적용
-        edges = apply_edge_detection(filtered_image)
-        preprocessed_images[class_name] = edges
-    return preprocessed_images
-
