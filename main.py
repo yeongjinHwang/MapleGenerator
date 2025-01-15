@@ -1,12 +1,13 @@
+import faiss
 import cv2
 import json
-import heapq
 import os
+import torch
+from torchvision import models, transforms
 from utils.combine import combine_segments
 from utils.model import hair_loader, hair_infer, clothes_loader, clothes_infer
-from utils.post_processing import edge_segmentation, combine_segments, process_hair_predictions
-from utils.visual import visualize_segments, visualize_top_matches
-
+from utils.post_processing import edge_detection, combine_segments, process_hair_predictions
+from utils.visual import visualize_segments
 # 클래스 매핑 정의
 CLASS_MAPPING = {
     "bag": "none",
@@ -22,7 +23,55 @@ CLASS_MAPPING = {
     "hair": "hair"
 }
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+resnet = models.resnet50(pretrained=True).to(device)
+resnet.fc = torch.nn.Identity()
+resnet.eval()
+
+preprocess = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+def generate_embedding(image, model, preprocess_fn):
+    """
+    이미지에서 임베딩 생성
+    """
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    pil_image = transforms.ToPILImage()(image_rgb)
+    input_tensor = preprocess_fn(pil_image).unsqueeze(0).to(device)  # 배치 추가 및 GPU 이동
+    with torch.no_grad():
+        embedding = model(input_tensor).squeeze(0).cpu().numpy()  # 배치 제거 및 NumPy 변환
+    return embedding
+
+def search_faiss(seg_embedding, faiss_index_path, top_k=5):
+    """
+    FAISS 인덱스를 사용하여 유사도 검색
+
+    Args:
+        seg_embedding (np.ndarray): 검색할 세그멘테이션 임베딩 (1, 2048).
+        faiss_index_path (str): FAISS 인덱스 파일 경로.
+        top_k (int): 검색할 상위 K개.
+
+    Returns:
+        list of tuple: 상위 K개의 결과 (index, distance).
+    """
+    if not os.path.exists(faiss_index_path):
+        print(f"[WARN] FAISS 인덱스 파일이 존재하지 않습니다: {faiss_index_path}")
+        return []
+
+    # FAISS 인덱스 로드
+    index = faiss.read_index(faiss_index_path)
+
+    # 검색
+    D, I = index.search(seg_embedding, top_k)
+    return [(I[0][i], D[0][i]) for i in range(top_k)]
+
 def main():
+    # FAISS 인덱스 디렉토리
+    faiss_index_dir = "./data/faiss_indices"
+
     # 입력 이미지 경로
     image_path = "./data/bts_jhin.jpg"
 
@@ -50,40 +99,28 @@ def main():
 
     # 전처리 적용
     print("[INFO] 세그멘테이션 결과 전처리 중...")
-    preprocessed_images = edge_segmentation(reclassified_cropped_images)
+    preprocessed_images = edge_detection(reclassified_cropped_images)
     visualize_segments(preprocessed_images, "Preprocessed Result")
 
-    item_icons = {
-        "hair" : "./icon/Hair",
-        "top" : "./icon/Overall",
-        "overall" : "./icon/Shoes",
-        "bottom" : "./icon/bottom",
-        "shoes" : "./icon/shoes"
-    }
-
     # 아이콘과 비교
-    print("[INFO] 비교 중...")
+    print("[INFO] FAISS를 사용하여 비교 중...")
     icon_features = {}
     for class_name, seg_image in preprocessed_images.items():
-        top_5_heap = []  # 최소 힙으로 상위 5개를 유지
-        icon_directory = item_icons.get(class_name)
+        # 세그멘테이션 이미지의 임베딩 생성
+        seg_embedding = generate_embedding(seg_image, resnet, preprocess).reshape(1, -1)  # (1, 2048)
 
-        for file_name in icon_directory:
-            item_id = os.path.splitext(file_name)[0]  # 파일 이름에서 ID 추출
-            file_path = os.path.join(icon_directory, file_name)
+        # FAISS 인덱스 경로
+        faiss_index_path = os.path.join(faiss_index_dir, f"{class_name}_index.bin")
 
-            icon_image = cv2.imread(file_path, cv2.IMREAD_COLOR)
-            preprocessed_item = edge_segmentation(icon_image)
+        # FAISS 검색
+        results = search_faiss(seg_embedding, faiss_index_path, top_k=5)
+        icon_features[class_name] = results
 
-            score = 1  # TODO: 실제로 seg_image와 preprocessed_item의 유사도 계산
-
-            # 힙에 (score, item_id) 추가, 5개를 초과하면 최소값과 비교 후 대체
-            if len(top_5_heap) < 5:
-                heapq.heappush(top_5_heap, (score, item_id))
-            else:
-                heapq.heappushpop(top_5_heap, (score, item_id))
-
-        icon_features[class_name] = sorted(top_5_heap, key=lambda x: x[0], reverse=True)
+    # 유사도 결과 출력
+    for class_name, results in icon_features.items():
+        print(f"\n[RESULT] {class_name}:")
+        for idx, distance in results:
+            print(f"  - Index: {idx}, Distance: {distance:.4f}")
 
 if __name__ == "__main__":
     main()
