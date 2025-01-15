@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import os 
 
 def visualize_segments(cropped_images,title):
     """
@@ -63,7 +64,7 @@ def visualize_top_matches(seg_image, top_matches, icon_dir, overall_title="Top M
 
     # 첫 번째 컬럼: Segmentation 이미지
     plt.subplot(1, total_columns, 1)
-    plt.imshow(cv2.cvtColor(seg_image, cv2.COLOR_BGR2RGB))  # BGR -> RGB 변환
+    plt.imshow(seg_image)  # RGB 이미지로 시각화
     plt.title("Segmentation\nImage", fontsize=10)
     plt.axis("off")
 
@@ -79,9 +80,11 @@ def visualize_top_matches(seg_image, top_matches, icon_dir, overall_title="Top M
                 print(f"[WARN] ID {item_id}의 이미지를 불러올 수 없습니다.")
                 continue
 
+            icon_image_rgb = cv2.cvtColor(icon_image, cv2.COLOR_BGR2RGB)  # BGR -> RGB 변환
+
             # 시각화
             plt.subplot(1, total_columns, i + 2)  # Segmentation 이미지 이후부터 시작
-            plt.imshow(cv2.cvtColor(icon_image, cv2.COLOR_BGR2RGB))  # BGR -> RGB 변환
+            plt.imshow(icon_image_rgb)  # RGB 이미지로 시각화
             plt.title(f"ID: {item_id}\nScore: {similarity:.2f}", fontsize=10)
             plt.axis("off")
         else:
