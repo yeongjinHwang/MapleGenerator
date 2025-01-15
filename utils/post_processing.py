@@ -32,24 +32,59 @@ def apply_filter(image):
     filtered_image = cv2.GaussianBlur(image, (5, 5), 0)  # 커널 크기 조정 가능
     return filtered_image
 
-def preprocess_segmentation(cropped_images):
+def edge_detection(input_data):
     """
     Segmentation 결과 이미지를 필터링 및 Edge Detection 적용.
+    단일 이미지 또는 클래스별 이미지 딕셔너리를 모두 처리 가능.
 
     Args:
-        cropped_images (dict): 재분류된 클래스별로 자른 이미지를 포함하는 딕셔너리.
+        input_data (dict or numpy.ndarray): 
+            - dict: 재분류된 클래스별로 자른 이미지를 포함하는 딕셔너리.
+            - numpy.ndarray: 단일 이미지.
 
     Returns:
-        dict: 전처리된 이미지 딕셔너리.
+        dict or numpy.ndarray: 
+            - dict: 전처리된 이미지 딕셔너리.
+            - numpy.ndarray: 단일 이미지의 전처리 결과.
     """
-    preprocessed_images = {}
-    for class_name, cropped_image in cropped_images.items():
+    def process_image(image):
         # Gaussian Blur 적용
-        filtered_image = apply_filter(cropped_image)
+        filtered_image = apply_filter(image)
         # Edge Detection 적용
         edges = apply_edge_detection(filtered_image)
-        preprocessed_images[class_name] = edges
-    return preprocessed_images
+        return edges
+
+    if isinstance(input_data, dict):  # 입력 데이터가 dict인 경우
+        preprocessed_images = {}
+        for class_name, cropped_image in input_data.items():
+            preprocessed_images[class_name] = process_image(cropped_image)
+        return preprocessed_images
+
+    elif isinstance(input_data, np.ndarray):  # 입력 데이터가 단일 이미지인 경우
+        return process_image(input_data)
+
+def process_hair_predictions(seg_results):
+    """
+    예측 결과를 combine_segments와 통합 가능한 포맷으로 변환합니다.
+    Args:
+        seg_results: 세그멘테이션 결과 리스트.
+    Returns:
+        combine_segments와 통합 가능한 포맷의 예측 리스트.
+    """
+    processed_predictions = []
+    for result in seg_results:
+        if "mask" in result:
+            # 마스크에서 컨투어 추출
+            contours, _ = cv2.findContours((result["mask"] > 0.5).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for contour in contours:
+                if len(contour) > 2:  # 컨투어가 유효한 경우
+                    # 포맷 변환: [(x, y), ...] -> [{"x": x, "y": y}, ...]
+                    points = [{"x": int(pt[0]), "y": int(pt[1])} for pt in contour[:, 0, :]]
+                    processed_predictions.append({
+                        "class": result["label"],
+                        "points": points
+                    })
+    return processed_predictions
 
 def combine_segments(image_path, predictions, class_mapping):
     """
