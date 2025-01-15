@@ -2,9 +2,9 @@ task: segment
 mode: train
 model: yolo11m-seg.pt
 data: hair_custom.yaml
-epochs: 200
+epochs: 100
 time: null
-patience: 30
+patience: 100
 batch: 16
 imgsz: 640
 save: true
@@ -13,7 +13,7 @@ cache: false
 device: null
 workers: 8
 project: null
-name: train
+name: train3
 exist_ok: false
 pretrained: true
 optimizer: auto
@@ -103,4 +103,4 @@ erasing: 0.4
 crop_fraction: 1.0
 cfg: null
 tracker: botsort.yaml
-save_dir: runs/segment/train
+save_dir: runs/segment/train3
