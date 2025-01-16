@@ -5,47 +5,50 @@
 ## 주요 기능
 
 1. **세그멘테이션**
-   - 입력된 사람 이미지에서 '머리', '상의', '하의', '신발', '얼굴(표정)' 영역을 YOLOv11 모델을 통해 세그멘테이션합니다.
+   - 입력된 사람 이미지에서 '머리', '상의', '하의', '신발', '한벌옷' 영역을 Fine-Tuning YOLOv11 모델, pre-trained Model의 Hybrid Model을 통해 세그멘테이션합니다.
 
-2. **이미지 변환**
-   - 세그멘테이션 결과를 Image Generator를 사용하여 메이플스토리 치장 아이템 스타일로 변환합니다.
-
-3. **캐릭터 생성**
-   - 변환된 치장 아이템을 메이플스토리 기본 캐릭터에 합성하여 최종 캐릭터를 생성합니다.
-
-## 설치 방법
-
-### 요구 사항
-- Python 3.8 이상
-- PyTorch 1.10 이상
-- Ultralytics YOLOv11
-
-4. `hair_custom.yaml` 파일을 설정합니다. 프로젝트 설정은 `utils` 폴더에서 관리됩니다.
+2. **이미지 검색**
+   - MapleStory API를 통해 subCategory(Class) 5개의 항목에 대해 Item Icon을 받아옵니다.
+   - Icon들을 ResNET50을 통해 Embedding하고, Embedding 결과에 대해 FARISS를 통해 Embedding Area 저장합니다.
+   - 입력된 이미지와 Class기반으로 Ebedding Area에서 각각 TOP5 Icon을 추출합니다
 
 ## 사용 방법
 
-모든 작업은 `main.py`를 통해 수행됩니다. 아래의 명령어로 실행하세요:
+MapleStory API를 통해 ICON들을 Load, Save:
 
 ```bash
-python main.py --input <이미지 경로> --output <결과 저장 경로> # 추후 수정해야됩니다.
+python icon.py
 ```
+해당 ICON 폴더의 모든 Icon Image들을 Embedding 및 결과 저장
+```bash
+python embedding.py
+```
+해당 ICON Embedding 결과들과 입력 이미지 score계산 및 TOP5 추출
+```bash
+python main.py
+```
+
 
 ## 디렉토리 구조
 
 ```
 MapleGenerator/
-├── data/                # 데이터 파일 및 샘플 이미지
+├── data/
+│   ├── embeddings
+│   │   ├── *_id_map.json        # Embedding Idx와 Icon Ids Mapping
+│   │   └── *_index.bin          # Embedding 저장
+│   ├── icon                     
+│   │   └── {subCategory}/        # Icon Image 저장
 ├── dataset/             # 데이터셋 폴더
-├── ids_json/            # JSON 파일 관리
-├── runs/                # 실행 결과 저장 디렉토리
-├── utils/               # 유틸리티 코드 관리
-│   ├── combine.py       # 세그멘테이션 결과 병합
-│   ├── model.py         # 모델 로드 및 처리 함수
-│   ├── post_processing.py # 후처리 관련 함수
-│   ├── score.py         # 점수 계산 관련 함수
-│   └── get_id_json.py   # JSON ID 생성
-├── hair_custom.yaml     # 사용자 정의 설정 파일
-└── main.py              # 메인 스크립트
+├── runs/                # weight file 저장 폴더
+├── utils/               
+│   ├── combine.py      
+│   ├── model.py     
+│   ├── post_processing.py 
+│   └── visual.py
+├── icon.py
+├── embedding.py
+└── main.py
 ```
 
 ## 라이선스
@@ -55,4 +58,4 @@ MapleGenerator/
 ## 문의
 
 프로젝트 관련 문의사항은 아래 이메일로 연락해주세요:
-- Email: yeongjin.hwang@example.com
+- Email: yeongjin.gongjin@gmail.com
